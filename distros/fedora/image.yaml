@@ -1,8 +1,8 @@
 image:
   name: ps5-fedora
   distribution: fedora
-  release: "44"
-  description: Fedora GNOME (Wayland) desktop for PS5
+  release: "45"
+  description: Fedora GNOME (Wayland) desktop for PS5 (French & Repos)
   architecture: x86_64
 
 source:
@@ -72,8 +72,10 @@ packages:
     - wireless-regdb
     - util-linux
 
-    # System
+    # System & Localization (Français)
     - glibc-langpack-en
+    - glibc-langpack-fr
+    - langpacks-fr
     - openssh-server
     - sudo
     - nano
@@ -85,6 +87,11 @@ packages:
     - kexec-tools
     - zram-generator-defaults
     - firefox
+
+    # Logiciels supplémentaires (exemples modifiables)
+    - vlc
+    - gparted
+    - flatpak
 
     # Fonts
     - dejavu-sans-fonts
@@ -145,6 +152,12 @@ actions:
     #!/bin/bash
     set -eux
     fc-cache -f 2>/dev/null || true
+
+    # --- Ajout des dépôts RPM Fusion Free & Nonfree et Flathub ---
+    dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+                   https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
+    
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
 
     # SSH — password auth only, root login via sudo
     sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/'               /etc/ssh/sshd_config
