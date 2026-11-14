@@ -2,7 +2,7 @@ image:
   name: ps5-fedora
   distribution: fedora
   release: "45"
-  description: Fedora GNOME (Wayland) desktop for PS5 (French & Repos)
+  description: Fedora GNOME (Wayland) desktop for PS5 (Ultimate Gaming & Universal Langs)
   architecture: x86_64
 
 source:
@@ -34,6 +34,7 @@ packages:
     - gnome-calculator
     - gnome-tweaks
     - gnome-extensions-app
+    - gnome-extension-manager
     - gnome-software
     - gnome-initial-setup
     - file-roller
@@ -54,15 +55,15 @@ packages:
     - wireplumber
     - pipewire-pulseaudio
 
-    # Display / GPU (AMD) — userspace GL/Vulkan only; the kernel amdgpu driver
-    # comes from the linux-ps5 rpm. amdgpu is loaded LATE (by udev after pivot),
-    # exactly like the working Arch/Ubuntu images — NOT forced into the initramfs.
+    # Display / GPU (AMD)
     - mesa-dri-drivers
     - mesa-vulkan-drivers
     - mesa-va-drivers
+    - vulkan-tools
+    - mesa-demos
     - libinput
 
-    # Networking
+    # Networking & Hardware Tools
     - NetworkManager
     - NetworkManager-wifi
     - network-manager-applet
@@ -71,11 +72,42 @@ packages:
     - wpa_supplicant
     - wireless-regdb
     - util-linux
+    - git
+    - make
+    - gcc
+    - zlib-devel
+    - python3-PyQt6
 
-    # System & Localization (Français)
-    - glibc-langpack-en
-    - glibc-langpack-fr
+    # Gaming (Steam & Outils PS5)
+    - steam
+
+    # System & Universal Localization (Toutes les langues, dictionnaires & claviers)
+    - glibc-all-langpacks
+    - langpacks-core
     - langpacks-fr
+    - langpacks-en
+    - langpacks-es
+    - langpacks-de
+    - langpacks-it
+    - langpacks-pt
+    - langpacks-ru
+    - langpacks-ar
+    - langpacks-ja
+    - langpacks-zh_CN
+    - langpacks-ko
+    - firefox-langpacks
+    - hunspell
+    - xkeyboard-config
+    - ibus
+    - ibus-gtk3
+    - ibus-gtk4
+    - ibus-typing-booster
+    - ibus-libpinyin
+    - ibus-anthy
+    - ibus-hangul
+    - ibus-m17n
+
+    # Base System & Tools (Balena Etcher installé via RPM externe dans les actions)
     - openssh-server
     - sudo
     - nano
@@ -87,16 +119,17 @@ packages:
     - kexec-tools
     - zram-generator-defaults
     - firefox
-
-    # Logiciels supplémentaires (exemples modifiables)
-    - vlc
     - gparted
     - flatpak
 
-    # Fonts
+    # Universal Fonts
     - dejavu-sans-fonts
     - liberation-fonts
+    - google-noto-fonts-common
     - google-noto-sans-fonts
+    - google-noto-serif-fonts
+    - google-noto-sans-cjk-ttc-fonts
+    - google-noto-sans-arabic-fonts
     - google-noto-emoji-fonts
     - fontconfig
     action: install
@@ -139,6 +172,7 @@ actions:
     #!/bin/bash
     set -eux
     echo "retries=10" >> /etc/dnf/dnf.conf
+    echo "%_install_langs all" > /etc/rpm/macros.image-language-conf
     dnf makecache || true
 
 - trigger: post-update
@@ -153,13 +187,29 @@ actions:
     set -eux
     fc-cache -f 2>/dev/null || true
 
-    # --- Ajout des dépôts RPM Fusion Free & Nonfree et Flathub ---
+    # --- RPM Fusion & Flathub ---
     dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
                    https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
     
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
 
-    # SSH — password auth only, root login via sudo
+    # --- Installation de Balena Etcher (via dernier RPM GitHub) & Flatpaks Jeux ---
+    ETCHER_URL=$(curl -s https://api.github.com/repos/balena-io/etcher/releases/latest | grep "browser_download_url.*x86_64.rpm" | cut -d '"' -f 4 | head -n 1)
+    if [ -n "$ETCHER_URL" ]; then
+        dnf install -y "$ETCHER_URL" || true
+    fi
+
+    flatpak install -y flathub com.heroicgameslauncher.hgl net.davidotek.pupgui2 || true
+
+    # --- Compilation et installation de ps5-linux-tools ---
+    git clone https://github.com/ps5-linux/ps5-linux-tools /tmp/ps5-linux-tools
+    cd /tmp/ps5-linux-tools
+    make
+    ./install.sh
+    cd /
+    rm -rf /tmp/ps5-linux-tools
+
+    # SSH & Services de base
     sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/'               /etc/ssh/sshd_config
     sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
     systemctl enable sshd
@@ -168,15 +218,7 @@ actions:
     systemctl enable bluetooth.service
     systemctl set-default graphical.target
 
-    # The PS5 kernel patch writes into the request_firmware() buffer to skip
-    # Sony's signature header (gfx_v10_0_early_init, amdgpu_sdma_init_microcode).
-    # Firmware loaded from a .xz file is decompressed into pages the kernel
-    # maps PAGE_KERNEL_RO, so that write oopses and /dev/dri never appears.
-    # Fedora is the only distro shipping .xz firmware — Ubuntu/Arch use .zst
-    # (writable vzalloc buffer) and Debian/Kali ship raw .bin, which is why
-    # only this image black-screened. Keep the PS5 GPU firmware uncompressed.
-    # linux-firmware dedupes identical blobs as symlinks (mec2 -> mec) and
-    # unxz refuses symlinks, so materialize links first while targets exist.
+    # Firmware AMD PS5 non compressé
     cd /usr/lib/firmware/amdgpu
     for f in cyan_skillfish*.xz; do
         if [ -L "$f" ]; then
@@ -186,7 +228,6 @@ actions:
         fi
     done
     unxz cyan_skillfish*.xz
-    ls -la cyan_skillfish*
 
 - trigger: post-files
   action: |-
@@ -194,7 +235,6 @@ actions:
     set -eux
     systemctl enable grow-rootfs.service
 
-    # Built in a chroot → filesystem never SELinux-labelled. Disable SELinux.
     mkdir -p /etc/selinux
     if [ -f /etc/selinux/config ]; then
         sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
@@ -207,50 +247,64 @@ actions:
     echo "ps5:ps5" | chpasswd
     echo "%wheel ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel
 
-    # GDM autologin so the GNOME desktop appears without a login prompt.
     mkdir -p /etc/gdm
-    sed -i 's/^\[daemon\]/[daemon]\nAutomaticLoginEnable=True\nAutomaticLogin=ps5/' /etc/gdm/custom.conf 2>/dev/null || \
     cat > /etc/gdm/custom.conf <<'EOF'
     [daemon]
     AutomaticLoginEnable=True
     AutomaticLogin=ps5
-
-    [security]
-
-    [xdmcp]
-
-    [chooser]
-
-    [debug]
     EOF
 
-    # Skip gnome-initial-setup for the autologin user.
     mkdir -p /home/ps5/.config
     echo 'yes' > /home/ps5/.config/gnome-initial-setup-done
+
+    # --- Désactivation de la mise en veille écran et système pour le user ps5 ---
+    mkdir -p /home/ps5/.config/glib-2.0/settings
+    cat > /home/ps5/.config/glib-2.0/settings/keyfile <<'EOF'
+    [org/gnome/desktop/session]
+    idle-delay=uint32 0
+
+    [org/gnome/settings-daemon/plugins/power]
+    sleep-inactive-ac-type='nothing'
+    sleep-inactive-battery-type='nothing'
+    EOF
+
     chown -R ps5:ps5 /home/ps5
 
     # zram swap
     printf '[zram0]\nzram-size = ram / 2\ncompression-algorithm = zstd\n' > /etc/systemd/zram-generator.conf
 
-    # --- Install custom kernel rpm (its %post builds initramfs + deploys boot) -
-    # amdgpu is NOT forced into the initramfs — it loads late via udev, exactly
-    # like the working Arch/Ubuntu images.
+    # --- Installation Decky Loader ---
+    su - ps5 -c "curl -L https://github.com/SteamDeckHomebrew/decky-installer/releases/latest/download/install_release.sh | sh" || true
+
+    # --- Installation PS5 Hardware Control GUI ---
+    curl -fsSL https://raw.githubusercontent.com/NotHavoc/ps5-hwcon-gui/main/install.sh | bash || true
+
+    # --- Service systemd automatique pour Fan ON et Boost ON ---
+    cat > /etc/systemd/system/ps5-performance.service <<'EOF'
+    [Unit]
+    Description=PS5 Fan Control and Boost Mode
+    After=multi-user.target
+
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/local/sbin/ps5_control --fan on
+    ExecStartPost=/usr/local/sbin/ps5_control --boost on
+    RemainAfterExit=yes
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+    systemctl enable ps5-performance.service
+
+    # --- Install custom kernel rpm ---
     mkdir -p /boot/efi
-    # The kernel rpm is unsigned.
     rpm -ivh --nosignature /opt/rpms/*.rpm
     rm -rf /opt/rpms
     KVER=$(ls -1t /lib/modules | head -1)
-    [ -f "/boot/efi/bzImage" ] && [ -f "/boot/efi/initrd.img" ]
 
-    # --- PS5 internal WiFi: firmware-stage + autoload service ---
-    # The mlan.ko/moal.ko modules and their modprobe.d options are already
-    # shipped by linux-ps5.rpm (built by kernel-builder/build.sh, which now
-    # applies all PS5 mwifiex patches in one place). The rpm ALSO ships
-    # /etc/modules-load.d/moal which would auto-load moal at boot before
-    # firmware has been copied from /boot/efi — kill that and let our
-    # ps5-iw620.service do the copy+load in the right order.
+    # --- PS5 internal WiFi ---
     rm -f /etc/modules-load.d/moal
-    install -d /usr/local/sbin /etc/systemd/system /etc/modprobe.d /usr/share/doc/ps5-iw620
+    install -d /usr/local/sbin /etc/systemd/system /etc/modprobe.d
     cat > /etc/modprobe.d/ps5-iw620-noautoload.conf <<'EOF'
     blacklist moal
     blacklist mlan
@@ -266,7 +320,7 @@ actions:
     done
     [ -z "$FW_SRC" ] && FW_SRC="$(find /boot /boot/efi -path "*/$FW_NAME" -type f 2>/dev/null | head -n 1)"
     [ -n "$FW_SRC" ] && [ -f "$FW_SRC" ] && install -D -m 0644 "$FW_SRC" "$FW_DST"
-    [ -f "$FW_DST" ] || { echo "PS5 IW620 firmware not found; skipping"; exit 0; }
+    [ -f "$FW_DST" ] || exit 0
     if [ -d /sys/module/moal ] && [ ! -e /sys/bus/pci/drivers/wlan_pcie/0000:40:00.7 ]; then
       modprobe -r moal mlan 2>/dev/null || true
     fi
