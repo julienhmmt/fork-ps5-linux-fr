@@ -34,7 +34,6 @@ packages:
     - gnome-calculator
     - gnome-tweaks
     - gnome-extensions-app
-    - gnome-extension-manager
     - gnome-software
     - gnome-initial-setup
     - file-roller
@@ -78,12 +77,8 @@ packages:
     - zlib-devel
     - python3-PyQt6
 
-    # Gaming (Steam & Outils PS5)
-    - steam
-
     # System & Universal Localization (Toutes les langues, dictionnaires & claviers)
     - glibc-all-langpacks
-    - langpacks-core
     - langpacks-fr
     - langpacks-en
     - langpacks-es
@@ -192,6 +187,9 @@ actions:
                    https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
     
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
+
+    # --- Installation de Steam (maintenant que RPM Fusion est actif) ---
+    dnf install -y steam || true
 
     # --- Installation de Balena Etcher, Brave & Opera ---
     ETCHER_URL=$(curl -s https://api.github.com/repos/balena-io/etcher/releases/latest | grep "browser_download_url.*x86_64.rpm" | cut -d '"' -f 4 | head -n 1)
