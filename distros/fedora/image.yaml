@@ -34,7 +34,6 @@ packages:
     - gnome-calculator
     - gnome-tweaks
     - gnome-extensions-app
-    - gnome-extension-manager
     - gnome-software
     - gnome-initial-setup
     - file-roller
@@ -215,8 +214,8 @@ actions:
     EOF
     dnf install -y opera-stable || true
 
-    # Flatpaks Jeux (Heroic & ProtonUp-Qt)
-    flatpak install -y flathub com.heroicgameslauncher.hgl net.davidotek.pupgui2 || true
+    # Flatpaks (Heroic, ProtonUp-Qt & Extension Manager)
+    flatpak install -y flathub com.heroicgameslauncher.hgl net.davidotek.pupgui2 com.mattjakeman.ExtensionManager || true
 
     # --- Compilation et installation manuelle de ps5-linux-tools (sans systemctl) ---
     git clone https://github.com/ps5-linux/ps5-linux-tools /tmp/ps5-linux-tools
