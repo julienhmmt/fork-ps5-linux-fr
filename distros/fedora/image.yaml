@@ -2,7 +2,7 @@ image:
   name: ps5-fedora
   distribution: fedora
   release: "45"
-  description: Fedora GNOME (Wayland) desktop for PS5 (Ultimate Gaming & Universal Langs)
+  description: Fedora GNOME (Wayland) desktop for PS5 (Ultimate Gaming, Browsers & Universal Langs)
   architecture: x86_64
 
 source:
@@ -107,7 +107,7 @@ packages:
     - ibus-hangul
     - ibus-m17n
 
-    # Base System & Tools (Balena Etcher installé via RPM externe dans les actions)
+    # Base System & Tools
     - openssh-server
     - sudo
     - nano
@@ -193,12 +193,30 @@ actions:
     
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
 
-    # --- Installation de Balena Etcher (via dernier RPM GitHub) & Flatpaks Jeux ---
+    # --- Installation de Balena Etcher, Brave & Opera ---
     ETCHER_URL=$(curl -s https://api.github.com/repos/balena-io/etcher/releases/latest | grep "browser_download_url.*x86_64.rpm" | cut -d '"' -f 4 | head -n 1)
     if [ -n "$ETCHER_URL" ]; then
         dnf install -y "$ETCHER_URL" || true
     fi
 
+    # Brave Browser
+    dnf config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo || true
+    dnf install -y brave-browser || true
+
+    # Opera Browser
+    rpm --import https://rpm.opera.com/rpmrepo.key || true
+    cat > /etc/yum.repos.d/opera.repo <<'EOF'
+    [opera]
+    name=Opera packages
+    type=rpm-md
+    baseurl=https://rpm.opera.com/rpm
+    gpgcheck=1
+    gpgkey=https://rpm.opera.com/rpmrepo.key
+    enabled=1
+    EOF
+    dnf install -y opera-stable || true
+
+    # Flatpaks Jeux (Heroic & ProtonUp-Qt)
     flatpak install -y flathub com.heroicgameslauncher.hgl net.davidotek.pupgui2 || true
 
     # --- Compilation et installation de ps5-linux-tools ---
