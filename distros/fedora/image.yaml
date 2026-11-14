@@ -34,6 +34,7 @@ packages:
     - gnome-calculator
     - gnome-tweaks
     - gnome-extensions-app
+    - gnome-extension-manager
     - gnome-software
     - gnome-initial-setup
     - file-roller
@@ -217,11 +218,11 @@ actions:
     # Flatpaks Jeux (Heroic & ProtonUp-Qt)
     flatpak install -y flathub com.heroicgameslauncher.hgl net.davidotek.pupgui2 || true
 
-    # --- Compilation et installation de ps5-linux-tools ---
+    # --- Compilation et installation manuelle de ps5-linux-tools (sans systemctl) ---
     git clone https://github.com/ps5-linux/ps5-linux-tools /tmp/ps5-linux-tools
     cd /tmp/ps5-linux-tools
     make
-    ./install.sh
+    install -m 0755 ps5_control /usr/local/sbin/ps5_control
     cd /
     rm -rf /tmp/ps5-linux-tools
 
