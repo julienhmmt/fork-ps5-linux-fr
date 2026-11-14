@@ -2,8 +2,9 @@ image:
   name: ps5-fedora
   distribution: fedora
   release: "45"
-  description: Fedora GNOME (Wayland) desktop for PS5 (Ultimate Gaming, Browsers & Universal Langs)
+  description: Fedora GNOME (Wayland) desktop for PS5 (Optimized Gaming & FR/EN Langs)
   architecture: x86_64
+  size: 16000MB
 
 source:
   downloader: fedora-http
@@ -77,30 +78,17 @@ packages:
     - zlib-devel
     - python3-PyQt6
 
-    # System & Universal Localization (Toutes les langues, dictionnaires & claviers)
+    # Localization (Strictement Français et Anglais)
     - glibc-all-langpacks
     - langpacks-fr
     - langpacks-en
-    - langpacks-es
-    - langpacks-de
-    - langpacks-it
-    - langpacks-pt
-    - langpacks-ru
-    - langpacks-ar
-    - langpacks-ja
-    - langpacks-zh_CN
-    - langpacks-ko
     - firefox-langpacks
-    - hunspell
+    - hunspell-fr
+    - hunspell-en
     - xkeyboard-config
     - ibus
     - ibus-gtk3
     - ibus-gtk4
-    - ibus-typing-booster
-    - ibus-libpinyin
-    - ibus-anthy
-    - ibus-hangul
-    - ibus-m17n
 
     # Base System & Tools
     - openssh-server
@@ -117,14 +105,10 @@ packages:
     - gparted
     - flatpak
 
-    # Universal Fonts
+    # Essentiels Fonts
     - dejavu-sans-fonts
     - liberation-fonts
-    - google-noto-fonts-common
     - google-noto-sans-fonts
-    - google-noto-serif-fonts
-    - google-noto-sans-cjk-ttc-fonts
-    - google-noto-sans-arabic-fonts
     - google-noto-emoji-fonts
     - fontconfig
     action: install
@@ -167,7 +151,7 @@ actions:
     #!/bin/bash
     set -eux
     echo "retries=10" >> /etc/dnf/dnf.conf
-    echo "%_install_langs all" > /etc/rpm/macros.image-language-conf
+    echo "%_install_langs fr,en" > /etc/rpm/macros.image-language-conf
     dnf makecache || true
 
 - trigger: post-update
@@ -188,7 +172,7 @@ actions:
     
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
 
-    # --- Installation de Steam (maintenant que RPM Fusion est actif) ---
+    # --- Installation de Steam ---
     dnf install -y steam || true
 
     # --- Installation de Balena Etcher, Brave & Opera ---
@@ -217,7 +201,7 @@ actions:
     # Flatpaks (Heroic, ProtonUp-Qt & Extension Manager)
     flatpak install -y flathub com.heroicgameslauncher.hgl net.davidotek.pupgui2 com.mattjakeman.ExtensionManager || true
 
-    # --- Compilation et installation manuelle de ps5-linux-tools (sans systemctl) ---
+    # --- Compilation et installation manuelle de ps5-linux-tools ---
     git clone https://github.com/ps5-linux/ps5-linux-tools /tmp/ps5-linux-tools
     cd /tmp/ps5-linux-tools
     make
