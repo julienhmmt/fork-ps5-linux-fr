@@ -66,15 +66,16 @@ jobs:
           ls -lh image/output/*.img
           sha256sum image/output/*.img
 
-      - name: Compress image
+      - name: Compress and split image into 1.5GB parts (7z)
         run: |
-          xz -T0 -4 -c image/output/ps5-${{ matrix.distro }}.img \
-            > image/output/ps5-${{ matrix.distro }}.img.xz
+          sudo apt-get update && sudo apt-get install -y p7zip-full
+          # On compresse et découpe l'image brute en volumes de 1500 Mo (1.5GB) pour éviter la limite des 2Go de GitHub
+          7z a -t7z -mx=4 -v1500m image/output/ps5-${{ matrix.distro }}.img.7z image/output/ps5-${{ matrix.distro }}.img
 
       - name: Save build metadata
         run: |
           mkdir -p meta
-          sha256sum image/output/ps5-${{ matrix.distro }}.img.xz \
+          sha256sum image/output/ps5-${{ matrix.distro }}.img.7z.* \
             | sed 's|image/output/||' > meta/${{ matrix.distro }}.sha256
           echo "${{ steps.version.outputs.kver }}" > meta/kver
           echo "${{ steps.version.outputs.psha }}" > meta/psha
@@ -87,11 +88,11 @@ jobs:
           path: meta/
           retention-days: 1
 
-      - name: Upload Fedora image artifact
+      - name: Upload Fedora image parts artifact
         uses: actions/upload-artifact@v6
         with:
           name: ps5-${{ matrix.distro }}-img
-          path: image/output/ps5-${{ matrix.distro }}.img.xz
+          path: image/output/ps5-${{ matrix.distro }}.img.7z.*
           retention-days: 7
 
   release:
@@ -111,7 +112,7 @@ jobs:
           path: meta
           merge-multiple: true
 
-      - name: Download built image
+      - name: Download built image parts
         uses: actions/download-artifact@v6
         with:
           name: ps5-fedora-img
@@ -132,13 +133,13 @@ jobs:
             const sumLine = fs.readFileSync(path.join('meta', 'fedora.sha256'), 'utf8').trim();
 
             const body = [
-              'PS5 Linux Fedora 45 FR image — built from latest `main`.',
+              'PS5 Linux Fedora 45 FR image — built from latest `main` (Split into 1.5GB parts).',
               '',
               `Kernel: \`${kver}\``,
               `Patches: [\`${psha}\`](https://github.com/ps5-linux/ps5-linux-patches/commit/${psha})`,
               `Built: \`${ts}\``,
               '',
-              '**SHA256 checksum:**',
+              '**SHA256 checksums:**',
               '```',
               sumLine,
               '```',
@@ -169,8 +170,9 @@ jobs:
           tag_name: latest
           name: PS5 Linux Fedora 45 FR (latest)
           body: ${{ steps.body.outputs.text }}
-          files: output/ps5-fedora.img.xz
+          files: output/ps5-fedora.img.7z.*
           make_latest: true
+          overwrite_files: true
 
       - name: Refresh release publish date
         uses: actions/github-script@v8
@@ -186,3 +188,4 @@ jobs:
               ...context.repo, release_id: rel.id, draft: false, make_latest: 'true',
             });
             core.info(`re-published release ${rel.id}`);
+            
