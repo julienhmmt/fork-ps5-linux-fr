@@ -4,7 +4,6 @@ image:
   release: "45"
   description: Fedora GNOME (Wayland) desktop for PS5 (Optimized Gaming & FR/EN Langs)
   architecture: x86_64
-  size: 16000MB
 
 source:
   downloader: fedora-http
