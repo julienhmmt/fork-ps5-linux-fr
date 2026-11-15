@@ -88,6 +88,7 @@ packages:
     - ibus-gtk4
 
     # Base System & Tools
+    - zenity
     - newt
     - openssh-server
     - sudo
@@ -252,7 +253,7 @@ actions:
     su - ps5 -c "curl -L https://github.com/SteamDeckHomebrew/decky-installer/releases/latest/download/install_release.sh | sh" || true
 
     # --- Installation PS5 Hardware Control GUI ---
-    curl -fsSL https://raw.githubusercontent.com/NotHavoc/ps5-hwcon-gui/main/install.sh | bash || true
+    curl -fsSL https://raw.githubusercontent.com/NotHavocc/ps5-hwcon-gui/main/install.sh | bash || true
 
     # --- Service systemd automatique pour Fan ON et Boost ON ---
     cat > /etc/systemd/system/ps5-performance.service <<'EOF'
@@ -271,7 +272,7 @@ actions:
     EOF
     systemctl enable ps5-performance.service
 
-    # --- Installation PS5 Fedora Manager + Icône GNOME ---
+    # --- Installation PS5 Fedora Manager + Icône GNOME (Version Zenity) ---
     curl -fsSL https://raw.githubusercontent.com/nexgen999/ps5-fedora-manager/main/ps5-manager.sh -o /usr/local/bin/ps5-manager
     chmod +x /usr/local/bin/ps5-manager
 
@@ -281,7 +282,7 @@ actions:
     [Desktop Entry]
     Name=PS5 Fedora Manager
     Comment=Gestionnaire système, matériel et logiciels pour PS5 Linux
-    Exec=gnome-terminal --title="PS5 Fedora Manager" -- bash -c "sudo /usr/local/bin/ps5-manager; exec bash"
+    Exec=/usr/local/bin/ps5-manager
     Icon=/usr/share/pixmaps/ps5-manager.png
     Terminal=false
     Type=Application
