@@ -88,6 +88,7 @@ packages:
     - ibus-gtk4
 
     # Base System & Tools
+    - newt
     - openssh-server
     - sudo
     - nano
@@ -269,6 +270,26 @@ actions:
     WantedBy=multi-user.target
     EOF
     systemctl enable ps5-performance.service
+
+    # --- Installation PS5 Fedora Manager + Icône GNOME ---
+    curl -fsSL https://raw.githubusercontent.com/nexgen999/ps5-fedora-manager/main/ps5-manager.sh -o /usr/local/bin/ps5-manager
+    chmod +x /usr/local/bin/ps5-manager
+
+    curl -fsSL https://raw.githubusercontent.com/nexgen999/ps5-fedora-manager/main/icon.png -o /usr/share/pixmaps/ps5-manager.png || true
+
+    cat > /usr/share/applications/ps5-manager.desktop <<'EOF'
+    [Desktop Entry]
+    Name=PS5 Fedora Manager
+    Comment=Gestionnaire système, matériel et logiciels pour PS5 Linux
+    Exec=gnome-terminal --title="PS5 Fedora Manager" -- bash -c "sudo /usr/local/bin/ps5-manager; exec bash"
+    Icon=/usr/share/pixmaps/ps5-manager.png
+    Terminal=false
+    Type=Application
+    Categories=System;Settings;
+    Keywords=PS5;Fedora;Manager;Fan;Kernel;
+    EOF
+    chmod 644 /usr/share/applications/ps5-manager.desktop
+    update-desktop-database /usr/share/applications/ || true
 
     # --- Install custom kernel rpm ---
     mkdir -p /boot/efi
