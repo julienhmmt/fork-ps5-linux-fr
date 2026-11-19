@@ -77,6 +77,14 @@ packages:
     - zlib-devel
     - python3-PyQt6
 
+    # GTK4 / Libadwaita (PS5 Fedora Manager)
+    - python3-gobject
+    - gtk4
+    - libadwaita
+    - gobject-introspection
+    - desktop-file-utils
+    - xhost
+
     # Localization (Strict minimum FR/EN)
     - glibc-all-langpacks
     - langpacks-fr
@@ -102,6 +110,8 @@ packages:
     - zram-generator-defaults
     - firefox
     - flatpak
+    - fuse
+    - fuse-libs
 
     # Essential Fonts
     - dejavu-sans-fonts
@@ -165,7 +175,10 @@ actions:
     # --- RPM Fusion & Flathub ---
     dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
                    https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
-    
+
+    # --- Steam pilotes graphiques 32 bits ---
+    dnf install -y mesa-vulkan-drivers.i686 mesa-dri-drivers.i686 libva.i686 || true
+
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
 
     # --- Installation de Balena Etcher uniquement ---
@@ -232,18 +245,6 @@ actions:
 
     mkdir -p /home/ps5/.config
     echo 'yes' > /home/ps5/.config/gnome-initial-setup-done
-
-    # --- Désactivation de la mise en veille écran et système pour le user ps5 ---
-    mkdir -p /home/ps5/.config/glib-2.0/settings
-    cat > /home/ps5/.config/glib-2.0/settings/keyfile <<'EOF'
-    [org/gnome/desktop/session]
-    idle-delay=uint32 0
-
-    [org/gnome/settings-daemon/plugins/power]
-    sleep-inactive-ac-type='nothing'
-    sleep-inactive-battery-type='nothing'
-    EOF
-
     chown -R ps5:ps5 /home/ps5
 
     # zram swap
@@ -251,9 +252,6 @@ actions:
 
     # --- Installation Decky Loader ---
     su - ps5 -c "curl -L https://github.com/SteamDeckHomebrew/decky-installer/releases/latest/download/install_release.sh | sh" || true
-
-    # --- Installation PS5 Hardware Control GUI ---
-    curl -fsSL https://raw.githubusercontent.com/NotHavocc/ps5-hwcon-gui/main/install.sh | bash || true
 
     # --- Service systemd automatique pour Fan ON et Boost ON ---
     cat > /etc/systemd/system/ps5-performance.service <<'EOF'
@@ -272,29 +270,18 @@ actions:
     EOF
     systemctl enable ps5-performance.service
 
-    # --- Installation PS5 Fedora Manager + Icône GNOME (Version Monolithique Zenity) ---
-    curl -fsSL https://raw.githubusercontent.com/nexgen999/ps5-fedora-manager/main/ps5-manager.sh -o /usr/local/bin/ps5-manager
-    chmod +x /usr/local/bin/ps5-manager
-
-    curl -fsSL https://raw.githubusercontent.com/nexgen999/ps5-fedora-manager/main/icon.png -o /usr/share/pixmaps/ps5-manager.png || true
-
-    cat > /usr/share/applications/ps5-manager.desktop <<'EOF'
-    [Desktop Entry]
-    Name=PS5 Fedora Manager
-    Comment=Gestionnaire système, matériel et logiciels pour PS5 Linux
-    Exec=/usr/local/bin/ps5-manager
-    Icon=/usr/share/pixmaps/ps5-manager.png
-    Terminal=false
-    Type=Application
-    Categories=System;Settings;
-    Keywords=PS5;Fedora;Manager;Fan;Kernel;
-    EOF
-    chmod 644 /usr/share/applications/ps5-manager.desktop
+    # --- Installation PS5 Fedora Manager ---
+    git clone https://github.com/nexgen999/ps5-fedora-manager.git /tmp/ps5-fedora-manager
+    cd /tmp/ps5-fedora-manager
+    chmod +x install.sh
+    ./install.sh
+    cd /
+    rm -rf /tmp/ps5-fedora-manager
     update-desktop-database /usr/share/applications/ || true
 
     # --- Install custom kernel rpm ---
     mkdir -p /boot/efi
-    rpm -ivh --nosignature /opt/rpms/*.rpm
+    rpm -ivh --nosignature --replacefiles /opt/rpms/*.rpm
     rm -rf /opt/rpms
     KVER=$(ls -1t /lib/modules | head -1)
 
@@ -343,4 +330,5 @@ actions:
     WantedBy=multi-user.target
     EOF
     depmod -a "$KVER"
+    /etc/kernel/postinst.d/zz-update-boot "$KVER" "/boot/vmlinuz-$KVER" || true
     systemctl enable ps5-iw620.service
