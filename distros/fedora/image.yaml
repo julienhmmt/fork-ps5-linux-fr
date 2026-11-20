@@ -27,6 +27,13 @@ packages:
     - gnome-control-center
     - gnome-settings-daemon
     - gnome-keyring
+    - seahorse
+    - pinentry-gnome3
+    - xdg-utils
+    - gvfs
+    - gvfs-smb
+    - gvfs-nfs
+    - gvfs-fuse
     - gnome-backgrounds
     - gnome-text-editor
     - gnome-system-monitor
@@ -62,7 +69,7 @@ packages:
     - mesa-demos
     - libinput
 
-    # Networking & Hardware Tools
+    # Networking, File Sharing (SMB/CIFS/NFS) & Hardware Tools
     - NetworkManager
     - NetworkManager-wifi
     - network-manager-applet
@@ -70,7 +77,18 @@ packages:
     - iw
     - wpa_supplicant
     - wireless-regdb
+    - cifs-utils
+    - samba-client
+    - samba
+    - nfs-utils
+    - ethtool
+    - nmap-ncat
+    - bind-utils
+    - curl
+    - wget
     - util-linux
+    - pciutils
+    - usbutils
     - git
     - make
     - gcc
@@ -96,6 +114,7 @@ packages:
     - ibus-gtk4
 
     # Base System & Tools
+    - bash-completion
     - zenity
     - newt
     - openssh-server
@@ -173,6 +192,16 @@ actions:
     #!/bin/bash
     set -eux
     fc-cache -f 2>/dev/null || true
+
+    # --- Activation globale de bash-completion pour les sessions Bash ---
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        cat > /etc/profile.d/ps5-bash-completion.sh <<'EOF'
+    if [ -n "$BASH_VERSION" ] && [ -r /usr/share/bash-completion/bash_completion ]; then
+        . /usr/share/bash-completion/bash_completion
+    fi
+    EOF
+        chmod 0644 /etc/profile.d/ps5-bash-completion.sh
+    fi
 
     # --- RPM Fusion & Flathub ---
     dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
